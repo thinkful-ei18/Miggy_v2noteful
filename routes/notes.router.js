@@ -29,7 +29,7 @@ router.get('/notes', (req, res, next) => {
     .where('title','like',`%${searchTerm}%`)
     .orderBy('id')
     .then((response) => res.json(response))
-    .catch((err) => err)
+    .catch((err) => next(err))
 
 });
 
@@ -69,7 +69,6 @@ router.put('/notes/:id', (req, res, next) => {
     err.status = 400;
     return next(err);
   }
-
 
   knex('notes')
     .where('id',`${noteId}`)
