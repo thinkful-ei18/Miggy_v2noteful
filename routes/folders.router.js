@@ -22,11 +22,32 @@ router.get('/folders/:id',(req,res,next) => {
 
 });
 
-// router.put('/folders/:id',(req,res,next) => {
-//   const folderId = req.params.id;
-//   knex
-//
-// })
+router.put('/folders/:id',(req,res,next) => {
+  const folderId = req.params.id;
+  const {name} = req.body;
+
+  const updateFolder = {name};
+  console.log(updateFolder)
+  if(!updateFolder.name){
+    const err = new Error('Missing `name` in request body');
+    err.status = 400;
+    return next(err);
+  }
+
+  knex('folders')
+    .where('id',`${folderId}`)
+    .returning('name')
+    .update(updateFolder)
+    .then((folder) => {
+      if(folder){
+        res.json(folder)
+      }
+      else{
+        next();
+      }
+    })
+    .catch(err=>{next(err)})
+});
 
 router.post('/folders',(req,res,next) => {
   const {name} =req.body;
@@ -49,6 +70,7 @@ router.post('/folders',(req,res,next) => {
     })
     .catch((err) => next(err));
 })
+
 router.delete('/folders/:id',(req,res,next) => {
   const folderId = req.params.id;
   knex('folders')
