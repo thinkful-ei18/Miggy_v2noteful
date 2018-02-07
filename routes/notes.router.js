@@ -1,8 +1,6 @@
 'use strict';
 const express = require('express');
 const knex = require('../knex');
-
-// Create an router instance (aka "mini-app")
 const router = express.Router();
 
 // TEMP: Simple In-Memory Database
@@ -14,9 +12,17 @@ const notes = simDB.initialize(data);
 
 // Get All (and search by query)
 /* ========== GET/READ ALL NOTES ========== */
+function currentNoteHelper(note,next){
+    if(note){
+      res.json(note[0])
+    }
+    else{
+      next();
+    }
+}
+
 router.get('/notes', (req, res, next) => {
   const  searchTerm = req.query.searchTerm ? req.query.searchTerm : '';
-
   knex
     .select()
     .from('notes')
@@ -40,10 +46,8 @@ router.get('/notes/:id', (req, res, next) => {
         }
         else{
           next();
-        }
-      })
+        }})
       .catch((err) => next(err));
-
 });
 
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
@@ -71,7 +75,7 @@ router.put('/notes/:id', (req, res, next) => {
     .where('id',`${noteId}`)
     .returning(['id','title','content'])
     .update(updateObj)
-    .then((note) =>{
+    .then((note) => {
       if(note){
         res.json(note[0])
       }
@@ -80,17 +84,6 @@ router.put('/notes/:id', (req, res, next) => {
       }
     })
     .catch(err=>{next(err)})
-  /*
-  notes.update(noteId, updateObj)
-    .then(item => {
-      if (item) {
-        res.json(item);
-      } else {
-        next();
-      }
-    })
-    .catch(err => next(err));
-  */
 });
 
 /* ========== POST/CREATE ITEM ========== */
@@ -117,16 +110,6 @@ router.post('/notes', (req, res, next) => {
     })
     .catch((err) => next(err))
 
-
-  /*
-  notes.create(newItem)
-    .then(item => {
-      if (item) {
-        res.location(`http://${req.headers.host}/notes/${item.id}`).status(201).json(item);
-      }
-    })
-    .catch(err => next(err));
-  */
 });
 
 /* ========== DELETE/REMOVE A SINGLE ITEM ========== */
@@ -138,18 +121,6 @@ router.delete('/notes/:id', (req, res, next) => {
     .del()
     .then(res.status(204).end())
     .catch((err) => next(err))
-
-  /*
-  notes.delete(id)
-    .then(count => {
-      if (count) {
-        res.status(204).end();
-      } else {
-        next();
-      }
-    })
-    .catch(err => next(err));
-  */
 });
 
 module.exports = router;
