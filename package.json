@@ -16,6 +16,7 @@
 		"knex": "^0.14.2",
 		"morgan": "^1.9.0",
 		"pg": "^7.4.1",
-		"pg-error-constants": "^1.0.0"
+		"pg-error-constants": "^1.0.0",
+		"treeize": "^2.1.2"
 	}
 }

@@ -2,14 +2,14 @@
 -- SELECT CURRENT_DATE;
 --
 -- DROP TABLE IF EXISTS notes;
---
+-- --
 -- CREATE TABLE notes (
 --   id serial PRIMARY KEY,
 --   title text NOT NULL,
 --   content text,
 --   created timestamp DEFAULT now()
 -- );
---
+-- --
 -- ALTER SEQUENCE notes_id_seq RESTART WITH 1000;
 --
 -- INSERT INTO notes (title, content,folder_id) VALUES
