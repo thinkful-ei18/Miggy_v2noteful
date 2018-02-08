@@ -5,7 +5,7 @@ const store = (function () {
 
   return {
     notes: [],
-    
+    folders:[],
     currentNote: {},
     currentQuery: {
       searchTerm: '',

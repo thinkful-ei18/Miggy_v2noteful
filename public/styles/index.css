@@ -208,7 +208,11 @@ body>main {
 .removeBtn {
   padding: 0;
 }
-
+.folderEditBtn{
+  font-size: 0.5em;
+  padding:0.5em;
+  margin:0.5em;
+}
 .active {
   background-color: #4e565d;
 }
@@ -256,4 +260,3 @@ select {
 .error-message {
   color:red;
 }
-

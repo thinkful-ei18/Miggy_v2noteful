@@ -38,13 +38,8 @@ router.put('/folders/:id',(req,res,next) => {
     .where('id',`${folderId}`)
     .returning('name')
     .update(updateFolder)
-    .then((folder) => {
-      if(folder){
-        res.json(folder)
-      }
-      else{
-        next();
-      }
+    .then(([result]) => {
+      res.location(`${req.originalUrl}/${result.id}`).status(202).json(result);
     })
     .catch(err=>{next(err)})
 });
@@ -60,13 +55,8 @@ router.post('/folders',(req,res,next) => {
   knex('folders')
     .returning('name')
     .insert(newFolder)
-    .then((folder) => {
-      if(folder){
-        res.json(folder)
-      }
-      else{
-        next();
-      }
+    .then(([result]) => {
+      res.location(`${req.originalUrl}/${result.id}`).status(202).json(result);
     })
     .catch((err) => next(err));
 })
