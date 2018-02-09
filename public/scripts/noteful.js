@@ -48,7 +48,7 @@ const noteful = (function () {
       <button class="removeBtn js-folder-delete">X</button>
 
     </li>`);
-    console.log(listItems);
+
   return [showAllItem, ...listItems].join('');
 }
 

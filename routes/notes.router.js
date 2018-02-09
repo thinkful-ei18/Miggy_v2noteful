@@ -18,8 +18,7 @@ router.get('/notes', (req, res, next) => {
   const  folderSearchTerm = req.query.folderId ? req.query.folderId : null;
   const  tagSearchTerm = req.query.tagId ? req.query.tagId : null;
 
-
-  knex.select('notes.id', 'title','content', 'folder_id', 'folders.name as folder_name','tags.id as tags:id','tags.name as tags:name')
+  knex.select('notes.id', 'title','created','folder_id', 'folders.name as folder_name','tags.id as tags:id','tags.name as tags:name')
     .from('notes')
     .leftJoin('folders', 'notes.folder_id', 'folders.id')
     .leftJoin('notes_tags','notes.id','note_id')
@@ -32,6 +31,7 @@ router.get('/notes', (req, res, next) => {
     })
     .where(function () {
     if (tagSearchTerm) {
+      console.log('tagSearchTerm rang true');
       const subQuery = knex.select('notes.id')
         .from('notes')
         .innerJoin('notes_tags', 'notes.id', 'notes_tags.note_id')
@@ -41,10 +41,8 @@ router.get('/notes', (req, res, next) => {
   })
     .orderBy('notes.id')
     .then((results) => {
-      const treeize = new Treeize();
-      treeize.grow(results);
-      const hydrated = treeize.getData();
-      res.json(hydrated);
+
+      res.json(results);
     })
     .catch((err) => next(err));
 });
@@ -52,14 +50,15 @@ router.get('/notes', (req, res, next) => {
 
 router.get('/notes/:id', (req, res, next) => {
   const noteId = req.params.id;
-  knex.select('notes.id', 'title', 'folder_id', 'folders.name as folder_name','tags.id as tags:id','tags.name as tags:name')
+
+  knex.select('notes.id', 'title','content', 'folder_id', 'folders.name as folder_name' ,'tags.id as tags:id','tags.name as tags:name')
       .from('notes')
       .leftJoin('folders', 'notes.folder_id', 'folders.id')
       .leftJoin('notes_tags','notes.id','note_id')
       .leftJoin('tags','tag_id','tags.id')
       .where('notes.id', `${noteId}`)
       .then((note) => {
-        if(note.length ===0 ){
+        if(note.length === 0 ){
           next();
         }
         else{
@@ -113,8 +112,10 @@ router.put('/notes/:id', (req, res, next) => {
 /* ========== POST/CREATE ITEM ========== */
 router.post('/notes', (req, res, next) => {
   const { title, content, folder_id, tags } = req.body;
+  const newItem = { title, content, folder_id};
 
-  const newItem = { title, content, folder_id };
+  let noteId;
+
   /***** Never trust users - validate input *****/
   if (!newItem.title) {
     const err = new Error('Missing `title` in request body');
@@ -122,21 +123,48 @@ router.post('/notes', (req, res, next) => {
     return next(err);
   }
 
-  let noteId;
-  knex('notes')
-    .insert(newItem)
+  knex.insert(newItem)
+    .into('notes')
     .returning('id')
-    .then(([id])=> {
+    .then(([id]) => {
       noteId = id;
-      return knex.select('notes.id', 'title', 'content', 'folder_id', 'folders.name as folder_name')
-        .from('notes')
-        .leftJoin('folders', 'notes.folder_id', 'folders.id')
-        .where('notes.id', noteId);
+      const  tagsInsert = tags.map(tagId => ({ note_id: noteId, tag_id: tagId }));
+      return knex.insert(tagsInsert)
+        .into('notes_tags');
     })
-    .then(([result]) => {
-        res.location(`${req.originalUrl}/${result.id}`).status(201).json(result);
+    .then(()=> {
+          return knex.select('notes.id', 'title', 'content', 'folder_id', 'folders.name as folder_name', 'tags.id as tags:id', 'tags.name as tags:name')
+          .from('notes')
+          .leftJoin('folders', 'notes.folder_id', 'folders.id')
+          .leftJoin('notes_tags', 'notes.id', 'notes_tags.note_id')
+          .leftJoin('tags', 'tags.id', 'notes_tags.tag_id')
+          .where('notes.id', noteId)
+          .orderBy('notes.id')
     })
-    .catch((err) => next(err))
+    .then((results) => {
+      // const treeize = new Treeize();
+      // treeize.grow(results);
+      // const hydrated = treeize.getData();
+      let myNewObj={}
+      results.forEach((newObj) => {
+        if(newObj===results[0]){
+          myNewObj={
+            id:newObj.id,
+            title:newObj.title,
+            content:newObj.content,
+            folder_id:newObj.folder_id,
+            folder_name:newObj.folder_name,
+            tags:[]
+          }
+        }
+        myNewObj.tags.push({
+          'id':newObj['tags:id'],
+          'name':newObj['tags:name']
+        })
+      })
+      return res.location(`${req.originalUrl}/${results.id}`).status(201).json(myNewObj);
+    })
+    .catch((err) => next(err));
 
 });
 
@@ -145,10 +173,10 @@ router.delete('/notes/:id', (req, res, next) => {
   const id = req.params.id;
   knex('notes')
     .returning('id')
-    .where({id:id})
+    .where({ id: id })
     .del()
     .then(res.status(204).end())
-    .catch((err) => next(err))
+    .catch((err) => next(err));
 });
 
 module.exports = router;

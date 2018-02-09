@@ -29,7 +29,7 @@
 -- (1022,2);
 
 -- SELECT * FROM notes_tags;
-SELECT title, tags.name FROM notes
+SELECT t FROM notes
 LEFT JOIN folders ON notes.folder_id = folders.id
 LEFT JOIN notes_tags ON notes.id = notes_tags.note_id
 LEFT JOIN tags ON notes_tags.tag_id = tags.id
