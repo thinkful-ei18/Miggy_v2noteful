@@ -44,14 +44,14 @@ router.get('/notes', (req, res, next) => {
 
       const hydratedNotesArray=[];
       let hydratedNote = {};
-      console.log("THIS IS TEH START OF IT");
+      // console.log("THIS IS TEH START OF OUR HYDRTATION /GET ALL ");
       let counter = 0;
       note.forEach((dehydratedNote) => {
-        console.log(hydratedNote.id,'======',dehydratedNote.id)
+        // console.log(hydratedNote.id,'======',dehydratedNote.id)
         if(hydratedNote.id&&hydratedNote.id!=dehydratedNote.id){
           hydratedNotesArray.push(hydratedNote)}
         if(hydratedNote.id !== dehydratedNote.id){
-          console.log('STARTING A NEW NOTE',dehydratedNote.id,dehydratedNote.title);
+          // console.log('STARTING A NEW NOTE',dehydratedNote.id,dehydratedNote.title);
           hydratedNote={
             id:dehydratedNote.id,
             title:dehydratedNote.title,
@@ -61,7 +61,7 @@ router.get('/notes', (req, res, next) => {
             tags:[]
           }
         }
-        console.log('pushing',dehydratedNote['tags:name']);
+        // console.log('pushing',dehydratedNote['tags:name']);
         hydratedNote.tags.push({
           'id':dehydratedNote['tags:id'],
           'name':dehydratedNote['tags:name']
@@ -88,24 +88,8 @@ router.get('/notes/:id', (req, res, next) => {
           next();
         }
         else{
-          let hydratedNote={};
-          note.forEach((dehydratedNote) => {
-            if(!hydratedNote.id){
-              hydratedNote={
-                id:dehydratedNote.id,
-                title:dehydratedNote.title,
-                content:dehydratedNote.content,
-                folder_id:dehydratedNote.folder_id,
-                folder_name:dehydratedNote.folder_name,
-                tags:[]
-              }
-            }
-            hydratedNote.tags.push({
-              'id':dehydratedNote['tags:id'],
-              'name':dehydratedNote['tags:name']
-            })
-          })
-          res.json(hydratedNote);
+          const hydrated = hydroHelper(note);
+          res.json(hydrated);
         }
       })
       .catch((err) => next(err));
@@ -114,17 +98,19 @@ router.get('/notes/:id', (req, res, next) => {
 /* ========== PUT/UPDATE A SINGLE ITEM ========== */
 router.put('/notes/:id', (req, res, next) => {
   const noteId = req.params.id;
+  const {tags} = req.body;
+
   /***** Never trust users - validate input *****/
   const updateObj = {};
   const updateableFields = ['title', 'content', 'folder_id'];
-  let currentNoteId;
 
   updateableFields.forEach(field => {
     if (field in req.body) {
       updateObj[field] = req.body[field];
     }
   });
-
+  console.log('we out here');
+  let currentNoteId;
   /***** Never trust users - validate input *****/
   if (!updateObj.title) {
     const err = new Error('Missing `title` in request body');
@@ -136,18 +122,37 @@ router.put('/notes/:id', (req, res, next) => {
     .where('id', `${noteId}`)
     .returning('id')
     .update(updateObj)
-    .then(([id]) => {
+    .then((id)=>{
+      return knex('notes_tags')
+        .returning('note_id')
+        .del()
+        .where('note_id',`${id}`)
+    })
+    .then((id) => {
+
+      const  tagsInsert = tags.map(tagId => ({ note_id: noteId, tag_id: tagId }));
+      return knex.insert(tagsInsert)
+        .into('notes_tags')
+        .returning('note_id');
+    })
+    .then((id) => {
+      console.log('log cabin',id);
       currentNoteId = id;
-      return knex.select('notes.id', 'title', 'content', 'folder_id', 'folders.name as folder_name')
+      return knex.select('notes.id', 'title', 'content', 'folder_id', 'folders.name as folder_name', 'tags.id as tags:id', 'tags.name as tags:name')
         .from('notes')
         .leftJoin('folders', 'notes.folder_id', 'folders.id')
-        .where('notes.id', currentNoteId);
+        .leftJoin('notes_tags', 'notes.id', 'notes_tags.note_id')
+        .leftJoin('tags', 'tags.id', 'notes_tags.tag_id')
+        .where('notes.id', noteId)
+        .orderBy('notes.id')
     })
-    .then(([result]) => {
-      res.location(`${req.originalUrl}/${result.id}`).status(202).json(result);
+    .then((results) => {
+      const hydrated = hydroHelper(results);
+      res.location(`${req.originalUrl}/${results.id}`).status(202).json(hydrated);
     })
     .catch(err=> { next(err); });
 });
+
 
 /* ========== POST/CREATE ITEM ========== */
 router.post('/notes', (req, res, next) => {
@@ -182,27 +187,8 @@ router.post('/notes', (req, res, next) => {
           .orderBy('notes.id')
     })
     .then((results) => {
-      // const treeize = new Treeize();
-      // treeize.grow(results);
-      // const hydrated = treeize.getData();
-      let myNewObj={}
-      results.forEach((newObj) => {
-        if(newObj===results[0]){
-          myNewObj={
-            id:newObj.id,
-            title:newObj.title,
-            content:newObj.content,
-            folder_id:newObj.folder_id,
-            folder_name:newObj.folder_name,
-            tags:[]
-          }
-        }
-        myNewObj.tags.push({
-          'id':newObj['tags:id'],
-          'name':newObj['tags:name']
-        })
-      })
-      return res.location(`${req.originalUrl}/${results.id}`).status(201).json(myNewObj);
+      const hydrated = hydroHelper(results);
+      return res.location(`${req.originalUrl}/${results.id}`).status(201).json(hydrated);
     })
     .catch((err) => next(err));
 
@@ -218,5 +204,32 @@ router.delete('/notes/:id', (req, res, next) => {
     .then(res.status(204).end())
     .catch((err) => next(err));
 });
+
+
+
+
+function hydroHelper(response){
+  let myNewObj={}
+  response.forEach((updateObj) => {
+    if(updateObj===response[0]){
+      myNewObj={
+        id:updateObj.id,
+        title:updateObj.title,
+        content:updateObj.content,
+        folder_id:updateObj.folder_id,
+        folder_name:updateObj.folder_name,
+        tags:[]
+      }
+    }
+    myNewObj.tags.push({
+      'id':updateObj['tags:id'],
+      'name':updateObj['tags:name']
+    })
+  })
+  return myNewObj;
+}
+
+
+
 
 module.exports = router;
