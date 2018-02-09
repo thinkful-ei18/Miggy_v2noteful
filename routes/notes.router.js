@@ -40,9 +40,35 @@ router.get('/notes', (req, res, next) => {
     }
   })
     .orderBy('notes.id')
-    .then((results) => {
+    .then((note) => {
 
-      res.json(results);
+      const hydratedNotesArray=[];
+      let hydratedNote = {};
+      console.log("THIS IS TEH START OF IT");
+      let counter = 0;
+      note.forEach((dehydratedNote) => {
+        console.log(hydratedNote.id,'======',dehydratedNote.id)
+        if(hydratedNote.id&&hydratedNote.id!=dehydratedNote.id){
+          hydratedNotesArray.push(hydratedNote)}
+        if(hydratedNote.id !== dehydratedNote.id){
+          console.log('STARTING A NEW NOTE',dehydratedNote.id,dehydratedNote.title);
+          hydratedNote={
+            id:dehydratedNote.id,
+            title:dehydratedNote.title,
+            content:dehydratedNote.content,
+            folder_id:dehydratedNote.folder_id,
+            folder_name:dehydratedNote.folder_name,
+            tags:[]
+          }
+        }
+        console.log('pushing',dehydratedNote['tags:name']);
+        hydratedNote.tags.push({
+          'id':dehydratedNote['tags:id'],
+          'name':dehydratedNote['tags:name']
+        })
+      })
+      hydratedNotesArray.push(hydratedNote);
+      res.json(hydratedNotesArray);
     })
     .catch((err) => next(err));
 });
@@ -62,10 +88,24 @@ router.get('/notes/:id', (req, res, next) => {
           next();
         }
         else{
-          const treeize = new Treeize();
-          treeize.grow(note);
-          const hydrated = treeize.getData();
-          res.json(hydrated);
+          let hydratedNote={};
+          note.forEach((dehydratedNote) => {
+            if(!hydratedNote.id){
+              hydratedNote={
+                id:dehydratedNote.id,
+                title:dehydratedNote.title,
+                content:dehydratedNote.content,
+                folder_id:dehydratedNote.folder_id,
+                folder_name:dehydratedNote.folder_name,
+                tags:[]
+              }
+            }
+            hydratedNote.tags.push({
+              'id':dehydratedNote['tags:id'],
+              'name':dehydratedNote['tags:name']
+            })
+          })
+          res.json(hydratedNote);
         }
       })
       .catch((err) => next(err));
